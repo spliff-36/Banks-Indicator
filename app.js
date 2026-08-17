@@ -2,7 +2,7 @@
 // IMPORTANT: Replace these with your actual Supabase project credentials
 const SUPABASE_URL = 'https://bpydkinuodatyzkvhfgp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_mG8nEd1jLZZUIyxgekQ-eA__ZWdO0Jm';
-let supabase;
+let supabaseClient;
 
 // App State
 const state = {
@@ -75,17 +75,17 @@ const els = {
 // --- Initialization ---
 async function init() {
     try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         setupEventListeners();
         
         // Check session
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             handleLogin(session.user);
         }
         
         // Listen for auth changes
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
                 handleLogin(session.user);
             } else if (event === 'SIGNED_OUT') {
@@ -105,7 +105,7 @@ function setupEventListeners() {
         const email = els.emailInput.value;
         const password = els.passwordInput.value;
         try {
-            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) throw error;
         } catch (error) {
             showToast(error.message, "error");
@@ -120,7 +120,7 @@ function setupEventListeners() {
         const email = els.emailInput.value;
         const password = els.passwordInput.value;
         try {
-            const { error } = await supabase.auth.signUp({ email, password });
+            const { error } = await supabaseClient.auth.signUp({ email, password });
             if (error) throw error;
             showToast("Account created! Check email to verify.", "success");
         } catch (error) {
@@ -128,7 +128,7 @@ function setupEventListeners() {
         }
     });
 
-    els.btnLogout.addEventListener('click', () => supabase.auth.signOut());
+    els.btnLogout.addEventListener('click', () => supabaseClient.auth.signOut());
     
     els.btnCopyToken.addEventListener('click', () => {
         if (state.profile?.user_token) {
@@ -188,11 +188,11 @@ async function handleLogin(user) {
     
     // Fetch profile for token
     try {
-        let { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        let { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
         if (!profile) {
             // Create default profile if missing (depends on your DB setup)
             const token = generateToken();
-            const { data } = await supabase.from('profiles').insert([{ id: user.id, user_token: token }]).select().single();
+            const { data } = await supabaseClient.from('profiles').insert([{ id: user.id, user_token: token }]).select().single();
             profile = data;
         }
         state.profile = profile;
@@ -232,7 +232,7 @@ async function loadData() {
     els.tableEmpty.style.display = 'none';
     
     try {
-        let query = supabase.from('trade_signals').select('*').eq('user_id', state.user.id);
+        let query = supabaseClient.from('trade_signals').select('*').eq('user_id', state.user.id);
         
         // Date Filter
         const now = new Date();
@@ -296,7 +296,7 @@ async function loadData() {
 // --- Updates & Rendering ---
 async function updateTradeOutcome(id, newOutcome) {
     try {
-        const { error } = await supabase.from('trade_signals').update({ outcome: newOutcome }).eq('id', id);
+        const { error } = await supabaseClient.from('trade_signals').update({ outcome: newOutcome }).eq('id', id);
         if (error) throw error;
         
         // Update local state and re-render
